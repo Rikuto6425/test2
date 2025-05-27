@@ -1,1 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>未来選択ゲーム</title>
+<style>
+  body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
+  #game { background: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
+  h1 { text-align: center; }
+  .choice button { display: block; margin: 10px 0; width: 100%; padding: 10px; font-size: 16px; }
+  .status, .money, #result { margin-top: 15px; font-size: 16px; }
+  #next { margin-top: 20px; display: none; width: 100%; padding: 10px; font-size: 16px; }
+</style>
+</head>
+<body>
+<div id="game">
+  <h1>未来選択ゲーム</h1>
+  <div id="sceneText">ゲームを開始します。あなたの選択で未来が変わります。</div>
+  <div id="choices" class="choice"></div>
+  <div class="status">
+    🌿 環境: <span id="env">10</span>　
+    💰 経済: <span id="eco">10</span>　
+    🧑‍🤝‍🧑 社会: <span id="soc">10</span><br />
+    🧠 技術: <span id="tech">10</span>　
+    🎨 文化: <span id="cult">10</span>
+  </div>
+  <div class="money">💵 所持金: ¥<span id="money">1000</span>万</div>
+  <div id="result"></div>
+  <button id="next">次へ</button>
+</div>
 
+<script>
+const scenes = [
+  {
+    text: "第1話：エネルギーの未来",
+    choices: [
+      { text: "再生可能エネルギーへ全面投資（¥100万）", cost: 100, change: { env: +4, eco: -1, tech: +2 }, effect: "環境重視のエネルギー政策が進行します。" },
+      { text: "化石燃料中心に経済重視（¥100万）", cost: 100, change: { env: -3, eco: +3 }, effect: "短期的な経済効果が期待されますが…" },
+      { text: "多様なエネルギーを調和的に推進（¥100万）", cost: 100, change: { env: +1, eco: +1, tech: +1 }, effect: "バランス型社会の一歩となるかもしれません。" },
+      { text: "何もせず現状維持（¥0）", cost: 0, change: { env: -1, eco: 0 }, effect: "選択しないという選択も影響を持ちます。" }
+    ]
+  },
+  {
+    text: "第2話：教育改革の推進",
+    choices: [
+      { text: "技術教育に注力（¥100万）", cost: 100, change: { tech: +3, cult: -1 }, effect: "若者の技術力が高まります。" },
+      { text: "文化・芸術に投資（¥100万）", cost: 100, change: { cult: +3, eco: -1 }, effect: "創造性豊かな社会が育ちます。" },
+      { text: "教育予算を拡大し全体的に強化（¥100万）", cost: 100, change: { tech: +2, cult: +2, eco: -2 }, effect: "未来の礎となるかもしれません。" },
+      { text: "現行制度を維持（¥0）", cost: 0, change: { tech: -1 }, effect: "時代の変化に乗り遅れるかもしれません。" }
+    ]
+  },
+  {
+    text: "第3話：都市開発の方向性",
+    choices: [
+      { text: "緑地と共生する都市を設計（¥100万）", cost: 100, change: { env: +3, soc: +2, eco: -1 }, effect: "環境に優しい暮らしが広がる。" },
+      { text: "経済効率重視の高層ビル建設（¥100万）", cost: 100, change: { eco: +3, env: -2, soc: -1 }, effect: "経済は伸びるが社会格差が拡大。" },
+      { text: "技術スマートシティを目指す（¥100万）", cost: 100, change: { tech: +4, soc: -1, eco: -1 }, effect: "最新技術の都市が誕生。" },
+      { text: "開発抑制で自然保護（¥0）", cost: 0, change: { env: +1, eco: -1, soc: 0 }, effect: "自然が守られ、経済は停滞。" }
+    ]
+  },
+  {
+    text: "第4話：医療と健康政策",
+    choices: [
+      { text: "先端医療技術に資金投入（¥100万）", cost: 100, change: { tech: +3, soc: +2, eco: -1 }, effect: "健康寿命が延びる。" },
+      { text: "地域医療の充実を図る（¥100万）", cost: 100, change: { soc: +4, eco: -2 }, effect: "誰もが医療を受けやすくなる。" },
+      { text: "医療費節約策を推進（¥100万）", cost: 100, change: { eco: +3, soc: -2, env: 0 }, effect: "経済は潤うが健康リスク増加。" },
+      { text: "現状維持（¥0）", cost: 0, change: { soc: -1 }, effect: "医療の質が徐々に低下。" }
+    ]
+  },
+  {
+    text: "第5話：農業の未来",
+    choices: [
+      { text: "持続可能な有機農業へ（¥100万）", cost: 100, change: { env: +3, eco: -1, cult: +1 }, effect: "環境と文化を大切にする農業が広まる。" },
+      { text: "大量生産型農業に投資（¥100万）", cost: 100, change: { eco: +3, env: -2, soc: -1 }, effect: "経済は伸びるが環境負荷大。" },
+      { text: "技術革新で効率化（¥100万）", cost: 100, change: { tech: +3, env: 0, eco: +1 }, effect: "最新技術で生産性アップ。" },
+      { text: "現状維持（¥0）", cost: 0, change: { env: -1, eco: 0 }, effect: "変化なし、停滞。" }
+    ]
+  },
+  {
+    text: "第6話：交通インフラ整備",
+    choices: [
+      { text: "環境負荷の少ない公共交通（¥100万）", cost: 100, change: { env: +3, soc: +2, eco: -1 }, effect: "環境に優しい交通網が整備される。" },
+      { text: "自動車産業の拡大支援（¥100万）", cost: 100, change: { eco: +3, env: -3 }, effect: "経済は伸びるが環境悪化。" },
+      { text: "技術的に革新的な交通システム開発（¥100万）", cost: 100, change: { tech: +4, eco: -2 }, effect: "未来的な移動手段が誕生。" },
+      { text: "投資控え現状維持（¥0）", cost: 0, change: { env: -1, soc: -1 }, effect: "交通問題が顕在化。" }
+    ]
+  },
+   {
+    text: "第7話：国際協力と平和",
+    choices: [
+      { text: "環境問題で国際連携強化（¥100万）", cost: 100, change: { env: 3, soc: 3, eco: -2 }, effect: "国際的な環境改善の動きが活発化。" },
+      { text: "経済優先で孤立路線（¥0）", cost: 0, change: { eco: 3, soc: -3 }, effect: "短期的経済は伸びるが孤立。" },
+      { text: "文化交流を深める（¥50万）", cost: 50, change: { cult: 4, soc: 2, eco: -1 }, effect: "多文化共生が促進される。" },
+      { text: "軍事力強化に注力（¥100万）", cost: 100, change: { eco: -3, soc: -2, tech: 2 }, effect: "緊張が高まるが技術革新は進む。" }
+    ]
+  },
+  {
+    text: "第8話：環境保護政策",
+    choices: [
+      { text: "厳しい規制を実施（¥100万）", cost: 100, change: { env: 5, eco: -3, soc: 1 }, effect: "環境が大きく改善するが経済は圧迫。" },
+      { text: "緩やかな規制で調和（¥50万）", cost: 50, change: { env: 2, eco: 0, soc: 1 }, effect: "環境と経済のバランスを目指す。" },
+      { text: "規制撤廃で経済重視（¥0）", cost: 0, change: { env: -4, eco: 3 }, effect: "経済は伸びるが環境悪化が加速。" },
+      { text: "環境保護団体と協働（¥80万）", cost: 80, change: { env: 3, soc: 2, eco: -1 }, effect: "市民との協力が進む。" }
+    ]
+  },
+  {
+    text: "第9話：技術革新と社会影響",
+    choices: [
+      { text: "AIとロボットを積極活用（¥120万）", cost: 120, change: { tech: 5, eco: 2, soc: -2 }, effect: "効率アップだが社会格差拡大。" },
+      { text: "人間中心の技術開発（¥100万）", cost: 100, change: { tech: 3, soc: 3, eco: -1 }, effect: "社会的課題に配慮した技術開発。" },
+      { text: "技術規制を強化（¥50万）", cost: 50, change: { tech: -2, soc: 2, eco: 0 }, effect: "技術の進展は遅れるが安全重視。" },
+      { text: "技術投資を控え現状維持（¥0）", cost: 0, change: { tech: -1, eco: 0, soc: -1 }, effect: "遅れが出るがリスクも低い。" }
+    ]
+  },
+  {
+    text: "第10話：未来の社会像",
+    choices: [
+      { text: "多様性と共生の社会を目指す（¥80万）", cost: 80, change: { soc: 5, cult: 3, eco: -2 }, effect: "包摂的で豊かな社会が実現。" },
+      { text: "経済成長最優先社会（¥0）", cost: 0, change: { eco: 5, soc: -3, env: -2 }, effect: "経済は伸びるが社会問題増加。" },
+      { text: "技術主導の効率社会（¥100万）", cost: 100, change: { tech: 4, eco: 2, soc: -2 }, effect: "効率は良いが人間味に欠ける。" },
+      { text: "伝統文化重視の保守社会（¥50万）", cost: 50, change: { cult: 5, soc: 1, tech: -2 }, effect: "文化は守られるが革新は鈍化。" }
+    ]
+  }
+];
+
+let status = {
+  env: 10,
+  eco: 10,
+  soc: 10,
+  tech: 10,
+  cult: 10,
+  money: 1000
+};
+
+let currentScene = 0;
+
+const sceneText = document.getElementById("sceneText");
+const choicesDiv = document.getElementById("choices");
+const envSpan = document.getElementById("env");
+const ecoSpan = document.getElementById("eco");
+const socSpan = document.getElementById("soc");
+const techSpan = document.getElementById("tech");
+const cultSpan = document.getElementById("cult");
+const moneySpan = document.getElementById("money");
+const resultDiv = document.getElementById("result");
+const nextBtn = document.getElementById("next");
+
+function updateStatusDisplay() {
+  envSpan.textContent = status.env;
+  ecoSpan.textContent = status.eco;
+  socSpan.textContent = status.soc;
+  techSpan.textContent = status.tech;
+  cultSpan.textContent = status.cult;
+  moneySpan.textContent = status.money;
+}
+
+function showScene() {
+  resultDiv.textContent = "";
+  nextBtn.style.display = "none";
+  let scene = scenes[currentScene];
+  sceneText.textContent = scene.text;
+  choicesDiv.innerHTML = "";
+
+  scene.choices.forEach((choice, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = choice.text;
+    btn.disabled = choice.cost > status.money;
+    btn.onclick = () => {
+      applyChoice(choice);
+      resultDiv.textContent = choice.effect;
+      nextBtn.style.display = "block";
+      choicesDiv.querySelectorAll("button").forEach(b => b.disabled = true);
+    };
+    choicesDiv.appendChild(btn);
+  });
+}
+
+function applyChoice(choice) {
+  status.money -= choice.cost;
+  status.env += choice.change.env || 0;
+  status.eco += choice.change.eco || 0;
+  status.soc += choice.change.soc || 0;
+  status.tech += choice.change.tech || 0;
+  status.cult += choice.change.cult || 0;
+
+2025.5.24 土曜日
+01:48 Akiyoshi 勝手に追加しました、すいません
+01:48 Akiyoshi サイトどんな感じか見せてもらってもよろしいですか？
+02:17 りくと スタンプ
+02:17 りくと 夜には見せれるかも
+02:17 りくと ごめんね＞＜
+02:18 りくと スタンプ
+06:42 Akiyoshi いろいろ無茶振り言うから、どこまでできるか言って欲しい
+06:44 Akiyoshi まず、イラストを出すことは可能？
+06:44 Akiyoshi 選択肢ごとに、イラストを変えることはできる？
+06:44 Akiyoshi 完全詰み要素を作ることはできるか
+06:45 Akiyoshi あるステータスの状態によって選べんものと選べないものを作ること
+06:48 Akiyoshi ステータスを多角形のグラフで表すこと
+06:56 りくと 提案ありがとう！
+色々試してみるから待ってて～
+07:08 Akiyoshi 無理しなくていいからね
+08:40 りくと レーダーチャートってこんな感じでいいのかな？
+08:40 りくと 画像
+08:40 りくと 選択肢に画像つけるは全然できそう！
+08:42 りくと 明日は忙しくて、コード作れなそう...ごめんね
+10:30 Akiyoshi ありがとう、そんな感じでいいです
+10:30 Akiyoshi 大丈夫
+10:30 Akiyoshi スタンプ
+2025.5.27 火曜日
+09:06 Akiyoshi いま、時間あるる
+09:06 Akiyoshi ？
+10:07 りくと 遅くなってごめん🙇‍♀️今なら一応いいよ
+10:08 Akiyoshi gptにhtml書いてもらってるんだけど、僕のスマホだと、うまく開けなくて、解決できるかな？
+10:11 りくと LINEに貼り付けてくれればスクショで送るよ～！
+10:13 Akiyoshi いま、、分析中で、もうすぐ寝るかもだから
+10:13 Akiyoshi 少し待ってください
+10:14 りくと スタンプ
+10:16 Akiyoshi 言語そのまま貼っちゃうから、もし、サイト化できるなら一度してみてもらいたいのですが
+10:17 りくと OK
+10:23 Akiyoshi <!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>未来選択ゲーム</title>
+<style>
+  body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
+  #game { background: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
+  h1 { text-align: center; }
+  .choice button { display: block; margin: 10px 0; width: 100%; padding: 10px; font-size: 16px; }
+  .status, .money, #result { margin-top: 15px; font-size: 16px; }
+  #next { margin-top: 20px; display: none; width: 100%; padding: 10px; font-size: 16px; }
+</style>
+</head>
+<body>
+<div id="game">
+  <h1>未来選択ゲーム</h1>
+  <div id="sceneText">ゲームを開始します。あなたの選択で未来が変わります。</div>
+  <div id="choices" class="choice"></div>
+  <div class="status">
+    🌿 環境: <span id="env">10</span>　
+    💰 経済: <span id="eco">10</…
+10:24 Akiyoshi 次、7から、前のところに7の途中まであるからカットで
+10:24 Akiyoshi  {
+    text: "第7話：国際協力と平和",
+    choices: [
+      { text: "環境問題で国際連携強化（¥100万）", cost: 100, change: { env: 3, soc: 3, eco: -2 }, effect: "国際的な環境改善の動きが活発化。" },
+      { text: "経済優先で孤立路線（¥0）", cost: 0, change: { eco: 3, soc: -3 }, effect: "短期的経済は伸びるが孤立。" },
+      { text: "文化交流を深める（¥50万）", cost: 50, change: { cult: 4, soc: 2, eco: -1 }, effect: "多文化共生が促進される。" },
+      { text: "軍事力強化に注力（¥100万）", cost: 100, change: { eco: -3, soc: -2, tech: 2 }, effect: "緊張が高まるが技術革新は進む。" }
+    ]
+  },
+  {
+    text: "第8話：環境保護政策",
+    choices: [
+      { text: "厳しい規制を実施（¥100万）", cost: 100, change: { env: 5, eco: -3, soc: 1 }, effect: "環境が大きく改善するが経済は圧迫。" },
+      { text: "緩やかな規制で調和（¥50万）", cost: 50, change: { env: 2, eco: 0, soc: 1 }, effect: "環境と経済のバランスを目指す。" },
+      { text: "規制撤廃で経済重視（¥0）", cost: 0, change: { env: -4, eco: 3 }, effect: "経済は伸びるが環境悪化が加速。" },
+      { text: "環境保護団体と協働（¥80万）", cost: 80, change: { env: 3, soc: 2, eco: -1 }, effect: "市民との協力が進む。" }
+    ]
+  },
+  {
+    text: "第9話：技術革新と社会影響",
+    choices: …
+10:25 Akiyoshi for (let key of ["env","eco","soc","tech","cult"]) {
+    if (status[key] < 0) status[key] = 0;
+  }
+  if (status.money < 0) status.money = 0;
+
+  updateStatusDisplay();
+}
+
+nextBtn.onclick = () => {
+  currentScene++;
+  if (currentScene < scenes.length) {
+    showScene();
+  } else {
+    showEnding();
+  }
+};
+
+function showEnding() {
+  choicesDiv.innerHTML = "";
+  nextBtn.style.display = "none";
+
+  let message = "【ゲーム終了】あなたの選択による未来の評価です。\n\n";
+
+2025.5.24 土曜日
+01:48 Akiyoshi 勝手に追加しました、すいません
+01:48 Akiyoshi サイトどんな感じか見せてもらってもよろしいですか？
+02:17 りくと スタンプ
+02:17 りくと 夜には見せれるかも
+02:17 りくと ごめんね＞＜
+02:18 りくと スタンプ
+06:42 Akiyoshi いろいろ無茶振り言うから、どこまでできるか言って欲しい
+06:44 Akiyoshi まず、イラストを出すことは可能？
+06:44 Akiyoshi 選択肢ごとに、イラストを変えることはできる？
+06:44 Akiyoshi 完全詰み要素を作ることはできるか
+06:45 Akiyoshi あるステータスの状態によって選べんものと選べないものを作ること
+06:48 Akiyoshi ステータスを多角形のグラフで表すこと
+06:56 りくと 提案ありがとう！
+色々試してみるから待ってて～
+07:08 Akiyoshi 無理しなくていいからね
+08:40 りくと レーダーチャートってこんな感じでいいのかな？
+08:40 りくと 画像
+08:40 りくと 選択肢に画像つけるは全然できそう！
+08:42 りくと 明日は忙しくて、コード作れなそう...ごめんね
+10:30 Akiyoshi ありがとう、そんな感じでいいです
+10:30 Akiyoshi 大丈夫
+10:30 Akiyoshi スタンプ
+2025.5.27 火曜日
+09:06 Akiyoshi いま、時間あるる
+09:06 Akiyoshi ？
+10:07 りくと 遅くなってごめん🙇‍♀️今なら一応いいよ
+10:08 Akiyoshi gptにhtml書いてもらってるんだけど、僕のスマホだと、うまく開けなくて、解決できるかな？
+10:11 りくと LINEに貼り付けてくれればスクショで送るよ～！
+10:13 Akiyoshi いま、、分析中で、もうすぐ寝るかもだから
+10:13 Akiyoshi 少し待ってください
+10:14 りくと スタンプ
+10:16 Akiyoshi 言語そのまま貼っちゃうから、もし、サイト化できるなら一度してみてもらいたいのですが
+10:17 りくと OK
+10:23 Akiyoshi <!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>未来選択ゲーム</title>
+<style>
+  body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
+  #game { background: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
+  h1 { text-align: center; }
+  .choice button { display: block; margin: 10px 0; width: 100%; padding: 10px; font-size: 16px; }
+  .status, .money, #result { margin-top: 15px; font-size: 16px; }
+  #next { margin-top: 20px; display: none; width: 100%; padding: 10px; font-size: 16px; }
+</style>
+</head>
+<body>
+<div id="game">
+  <h1>未来選択ゲーム</h1>
+  <div id="sceneText">ゲームを開始します。あなたの選択で未来が変わります。</div>
+  <div id="choices" class="choice"></div>
+  <div class="status">
+    🌿 環境: <span id="env">10</span>　
+    💰 経済: <span id="eco">10</…
+10:24 Akiyoshi 次、7から、前のところに7の途中まであるからカットで
+10:24 Akiyoshi  {
+    text: "第7話：国際協力と平和",
+    choices: [
+      { text: "環境問題で国際連携強化（¥100万）", cost: 100, change: { env: 3, soc: 3, eco: -2 }, effect: "国際的な環境改善の動きが活発化。" },
+      { text: "経済優先で孤立路線（¥0）", cost: 0, change: { eco: 3, soc: -3 }, effect: "短期的経済は伸びるが孤立。" },
+      { text: "文化交流を深める（¥50万）", cost: 50, change: { cult: 4, soc: 2, eco: -1 }, effect: "多文化共生が促進される。" },
+      { text: "軍事力強化に注力（¥100万）", cost: 100, change: { eco: -3, soc: -2, tech: 2 }, effect: "緊張が高まるが技術革新は進む。" }
+    ]
+  },
+  {
+    text: "第8話：環境保護政策",
+    choices: [
+      { text: "厳しい規制を実施（¥100万）", cost: 100, change: { env: 5, eco: -3, soc: 1 }, effect: "環境が大きく改善するが経済は圧迫。" },
+      { text: "緩やかな規制で調和（¥50万）", cost: 50, change: { env: 2, eco: 0, soc: 1 }, effect: "環境と経済のバランスを目指す。" },
+      { text: "規制撤廃で経済重視（¥0）", cost: 0, change: { env: -4, eco: 3 }, effect: "経済は伸びるが環境悪化が加速。" },
+      { text: "環境保護団体と協働（¥80万）", cost: 80, change: { env: 3, soc: 2, eco: -1 }, effect: "市民との協力が進む。" }
+    ]
+  },
+  {
+    text: "第9話：技術革新と社会影響",
+    choices: …
+10:25 Akiyoshi for (let key of ["env","eco","soc","tech","cult"]) {
+    if (status[key] < 0) status[key] = 0;
+  }
+  if (status.money < 0) status.money = 0;
+
+  updateStatusDisplay();
+}
+
+nextBtn.onclick = () => {
+  currentScene++;
+  if (currentScene < scenes.length) {
+    showScene();
+  } else {
+    showEnding();
+  }
+};
+
+function showEnding() {
+  choicesDiv.innerHTML = "";
+  nextBtn.style.display = "none";
+
+  let message = "【ゲーム終了】あなたの選択による未来の評価です。\n\n";
+10:26 Akiyoshi   const total = status.env + status.eco + status.soc + status.tech + status.cult;
+
+  if (status.env >= 30 && status.soc >= 30 && status.eco >= 20) {
+    message += "🌟 理想的な持続可能社会が実現しました！\n" +
+               "環境と社会の調和がとれた豊かな未来です。";
+  } else if (status.eco >= 40) {
+    message += "💰 経済最優先社会が誕生しました。\n" +
+               "繁栄していますが、環境や社会課題が残っています。";
+  } else if (status.tech >= 35) {
+    message += "🤖 技術革新社会の到来です。\n" +
+               "効率化が進み便利ですが、人間らしさを考える課題も。";
+  } else if (status.env <= 10) {
+    message += "⚠️ 環境破壊が進み、未来は危機的状況です。\n" +
+               "改善のための行動が必要です。";
+  } else if (status.soc <= 10) {
+    message += "⚠️ 社会的な分断や問題が深刻化しました。\n" +
+               "共生の精神が求められています。";
+  } else {
+    message += "🔄 バランスのとれた未来ですが、まだ改善の余地があります。\n" +
+               "これからも努力が必要です。";
+  }
+
+  sceneText.textContent = "【結果発表】";
+  resultDiv.textContent = message;
+}
+
+updateStatusDisplay();
+showScene();
+</script>
+</body>
+</html>
